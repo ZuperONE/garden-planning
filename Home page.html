@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<style>
+body {
+  background-color: green;
+  text-align:center;
+}
+#inputbox {
+  height:40px;
+  width:160px;
+  font-size:22px;
+  float:center;
+}
+#map {
+  float:left;
+  height:400px;
+  width:80%;
+  margin-top:40px;
+}
+#weather_info {
+  float:right;
+  width:20%;
+}
+#header {
+  background: #2EFE2E;
+  color:green;
+  padding:10px;
+  font-size: 50px;
+  font-family: "Sans-Serif";
+}
+
+#gpspointout {
+  font-size: 30px;
+  font-family: "Sans-Serif";
+  color:green;
+  background: #2EFE2E;
+  padding:10px;
+}
+</style>
+<link rel="stylesheet" href="jquery-letterfx.min.css">
+<body>
+<h1 id="header">
+  Hello, Welcome to Garden Planning
+</h1>
+
+<h2 id="gpspointout">
+Please type your Postcode or address here
+</h2>
+<div>
+  <center><input type="text" id="inputbox"></center>
+  <center><button type="submit" name="button" id="theBigRedButton">Find</button></center>
+
+<div id="map"></div>
+<div id="weather_info">
+  <p>
+    On average, the sun shines <span id="sun_shine">{X}</span>% of the time.
+  </p>
+</div>
+
+<p id="plant_recommendations"></p>
+
+<script src="jquery-2.1.4.min.js"></script>
+<script src="jquery-letterfx.min.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?v=3.exp"></script>
+<script>
+var map;
+var lat = 0;
+var lng = 0;
+$(document).ready(function() {
+
+  $('#gpspointout').hide();
+  $('#weather_info').hide();
+  $('#header').letterfx({"fx":"grow","words":true,"timing":100});
+
+  setTimeout(function() {
+    $('#gpspointout').show();
+    $('#gpspointout').letterfx({"fx":"grow","words":true,"timing":100})
+  }, 3000);
+
+  function initialize(lat, lng) {
+    map = new google.maps.Map(document.getElementById('map'), {
+      zoom: 19,
+      center: {lat: lat, lng: lng},
+      mapTypeId: google.maps.MapTypeId.SATELLITE
+    });
+  }
+
+  $('#theBigRedButton').on('click', function() {
+    var postcode = $('#inputbox').val();
+    $('#weather_info').show();
+    addressurls(postcode);
+
+    initialize(lat, lng);
+
+    var url = 'http://api.openweathermap.org/data/2.5/history/city?lat='+lat+'&lon='+lng+'&type=hour';
+    console.log(url);
+    var total_clouds_over_the_week = 0;
+    var average_clouds = 0;
+    var average_sun = 0;
+    var days = 0;
+    var sequence = [];
+    var data = null;
+    // load weather data
+    $.get(url, function(data) {
+      sequence = data.list;
+      days = data.list.length;
+      total_clouds_over_the_week = 0;
+      for(var i = 0; i < days; i+=1) {
+          total_clouds_over_the_week = total_clouds_over_the_week + sequence[i].clouds.all;
+      }
+      average_clouds = total_clouds_over_the_week / days;
+      average_sun = 100 - average_clouds;
+
+      $('#sun_shine').html(average_sun.toFixed(2));
+
+      var list_of_plants_to_recommend = [];
+      if(average_sun < 40 && average_sun >= 20) {
+        list_of_plants_to_recommend.push("Bluebells");
+      }
+
+      if(average_sun >= 30 && average_sun < 50) {
+        list_of_plants_to_recommend.push("Daisies");
+        list_of_plants_to_recommend.push("Dandelions");
+      }
+
+      if(list_of_plants_to_recommend.length == 0) {
+          $('#plant_recommendations').html('Sorry, Your garden is unsuitable for growing plants.');
+      }
+    });
+  });
+
+});
+
+function addressurls(postcode) {
+  var geocoder = new google.maps.Geocoder();
+  geocoder.geocode({'address': postcode}, function postcodesearch(results, status)
+  {
+    if (status == google.maps.GeocoderStatus.OK) {
+      lat = results[0].geometry.location.lat();
+      lng = results[0].geometry.location.lng();
+    } else {
+      alert("Error");
+    }
+  });
+}
+</script>
+</body>
+</html>
